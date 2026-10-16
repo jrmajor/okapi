@@ -30,8 +30,8 @@ class WebService
         'rating', 'rating_votes', 'recommendations', 'req_passwd', 'description',
         'descriptions', 'hint', 'hints', 'images', 'attr_acodes', 'attrnames', 'latest_logs',
         'my_notes', 'trackables_count', 'trackables', 'alt_wpts', 'last_found',
-        'last_modified', 'date_created', 'date_hidden', 'internal_id', 'is_watched',
-        'is_ignored', 'willattends',
+        'last_modified', 'date_created', 'date_published', 'date_hidden', 'internal_id',
+        'is_watched', 'is_ignored', 'willattends',
         'country', 'country2', 'state', 'region',
         'preview_image', 'trip_time', 'trip_distance', 'attribution_note','gc_code', 'hint2', 'hints2',
         'protection_areas', 'short_description', 'short_descriptions', 'needs_maintenance',
@@ -188,11 +188,14 @@ class WebService
             # - search_time and way_length are both round trip values and cannot be null;
             #     0 = not specified
             # - will-attend-count is stored in separate field
+            # - date_created column holds the publication date; see get_date_created_SQL()
 
             $rs = Db::query("
                 select
                     c.cache_id, c.name, c.longitude, c.latitude, c.listing_last_modified as last_modified,
-                    c.date_created, c.type, c.status, c.date_hidden, c.size, c.difficulty,
+                    ".self::get_date_created_SQL('c')." as date_created,
+                    ".self::get_date_published_SQL('c')." as date_published,
+                    c.type, c.status, c.date_hidden, c.size, c.difficulty,
                     c.terrain, c.wp_oc, c.wp_gc, c.wp_gc_maintained, c.logpw, c.user_id,
                     if(c.search_time=0, null, c.search_time) as trip_time,
                     if(c.way_length=0, null, c.way_length) as trip_distance,
@@ -225,7 +228,9 @@ class WebService
             $rs = Db::query("
                 select
                     c.cache_id, c.name, c.longitude, c.latitude, c.last_modified,
-                    c.date_created, c.type, c.status, c.date_hidden, c.size, c.difficulty,
+                    ".self::get_date_created_SQL('c')." as date_created,
+                    ".self::get_date_published_SQL('c')." as date_published,
+                    c.type, c.status, c.date_hidden, c.size, c.difficulty,
                     c.terrain, c.wp_oc, c.wp_gc, '' as wp_gc_maintained, c.logpw, c.user_id,
                     if(c.search_time=0, null, c.search_time) as trip_time,
                     if(c.way_length=0, null, c.way_length) as trip_distance,
@@ -384,6 +389,7 @@ class WebService
                     case 'last_found': $entry['last_found'] = ($row['last_found'] > '1980') ? date('c', strtotime($row['last_found'])) : null; break;
                     case 'last_modified': $entry['last_modified'] = date('c', strtotime($row['last_modified'])); break;
                     case 'date_created': $entry['date_created'] = date('c', strtotime($row['date_created'])); break;
+                    case 'date_published': $entry['date_published'] = ($row['date_published'] !== null) ? date('c', strtotime($row['date_published'])) : null; break;
                     case 'date_hidden': $entry['date_hidden'] = date('c', strtotime($row['date_hidden'])); break;
                     case 'internal_id': $entry['internal_id'] = $row['cache_id']; break;
                     case 'attribution_note': /* handled separately */ break;
@@ -1870,5 +1876,66 @@ class WebService
         }
 
         return $note;
+    }
+
+    /**
+     * Return an SQL expression for the date when the geocache was submitted.
+     * $table is the name or alias of the caches table.
+     *
+     * On OCDE, caches.date_created is reset to the publication date when
+     * a cache leaves status 5 (and is_publishdate is set). The original
+     * submission date survives in the first cache_coordinates entry, which
+     * is written on insert. Caches imported via XML sync keep their original
+     * date_created, but get a later cache_coordinates entry, hence least().
+     * Caches listed before 2012-08 have is_publishdate = 0, and their
+     * date_created was never reset.
+     */
+    public static function get_date_created_SQL($table)
+    {
+        if (Settings::get('OC_BRANCH') == 'oc.pl')
+            return "$table.date_created";
+
+        return "
+            if($table.is_publishdate, least($table.date_created, ifnull((
+                select min(cc.date_created)
+                from cache_coordinates cc
+                where cc.cache_id = $table.cache_id
+            ), $table.date_created)), $table.date_created)
+        ";
+    }
+
+    /**
+     * Return an SQL expression for the date when the geocache was published,
+     * or null if unknown. $table is the name or alias of the caches table.
+     *
+     * On OCPL, date_published is set by a trigger when the cache first gets
+     * status 1 or 2. It is null if the cache was archived before publication.
+     *
+     * On OCDE, caches.date_created is reset when a cache leaves status 5 to
+     * ANY status, also when it is archived without being published. For such
+     * caches, the publication date is the first change to status 1 or 2 in
+     * cache_status_modified (which is logged since 2013-06).
+     */
+    public static function get_date_published_SQL($table)
+    {
+        if (Settings::get('OC_BRANCH') == 'oc.pl')
+            return "$table.date_published";
+
+        return "
+            if($table.is_publishdate, if(exists(
+                select 1
+                from cache_status_modified csm
+                where
+                    csm.cache_id = $table.cache_id
+                    and csm.old_state = 5
+                    and csm.new_state not in (1, 2)
+            ), (
+                select min(csm.date_modified)
+                from cache_status_modified csm
+                where
+                    csm.cache_id = $table.cache_id
+                    and csm.new_state in (1, 2)
+            ), $table.date_created), null)
+        ";
     }
 }

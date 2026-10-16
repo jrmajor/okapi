@@ -612,10 +612,17 @@
             </li>
             <li>
                 <b>date_created</b> - date and time (ISO 8601) when the
-                geocache was listed at the Opencaching site. For OCDE-based installations
-                this is the date when it was published, while for OCPL installations it is the
-                date when it was originally submitted. These dates differ if the
-                geocache is prepared and then published later.
+                geocache listing was created.
+            </li>
+            <li>
+                <p><b>date_published</b> - date and time (ISO 8601) when the
+                geocache was published, <b>or null</b> if unknown. It is null for:</p>
+                <ul>
+                    <li>geocaches archived without ever being published,</li>
+                    <li>on OCDE-based installations, geocaches listed before August 2012.</li>
+                </ul>
+                <p>On OCPL-based installations, the dates of geocaches published before
+                February 2018 are estimated.</p>
             </li>
             <li>
                 <p><b>date_hidden</b> - date and time (ISO 8601) when:</p>

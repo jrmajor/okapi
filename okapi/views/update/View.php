@@ -861,4 +861,13 @@ class View
             # index already exists on all sites but OC.DE
         }
     }
+
+    private static function ver128()
+    {
+        # Ignore the newly added replicate field. This way we will avoid generating
+        # changelog entries for this field. On OCDE, changed date_created values
+        # are NOT ignored, so that replicate clients receive the corrected dates.
+
+        ReplicateCommon::verify_clog_consistency(true, array('date_published'));
+    }
 }

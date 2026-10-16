@@ -10,6 +10,7 @@ use okapi\core\Okapi;
 use okapi\core\OkapiServiceRunner;
 use okapi\core\Request\OkapiInternalRequest;
 use okapi\core\Request\OkapiRequest;
+use okapi\services\caches\geocaches\WebService as GeocachesWebService;
 use okapi\Settings;
 
 class SearchAssistant
@@ -729,7 +730,17 @@ class SearchAssistant
                     case 'rcmds%':
                         $cl = "$X_TOPRATINGS / if($X_FOUNDS = 0, 1, $X_FOUNDS)";
                         break;
-                    case 'date_created': $cl = "caches.date_created"; break;
+                    case 'date_created':
+                        $cl = GeocachesWebService::get_date_created_SQL('caches');
+                        break;
+                    case 'date_published':
+                        # Caches with an unknown publication date are sorted by
+                        # their creation date.
+                        $cl = "ifnull(".
+                            GeocachesWebService::get_date_published_SQL('caches').", ".
+                            GeocachesWebService::get_date_created_SQL('caches').
+                        ")";
+                        break;
                     case 'date_hidden': $cl = "caches.date_hidden"; break;
                     default:
                         throw new InvalidParam('order_by', "Unsupported field '$field'");

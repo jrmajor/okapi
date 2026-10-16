@@ -14,7 +14,7 @@ use okapi\Settings;
 class ReplicateCommon
 {
     private static $chunk_size = 50;
-    private static $logged_cache_fields = 'code|names|location|type|status|url|owner|founds|notfounds|size|size2|oxsize|difficulty|terrain|rating|rating_votes|recommendations|req_passwd|descriptions|hints|images|attr_acodes|trackables_count|trackables|alt_wpts|last_found|last_modified|date_created|date_hidden|willattends|country|state|preview_image|trip_time|trip_distance|gc_code|hints2|protection_areas|short_descriptions|needs_maintenance|watchers|oc_team_annotation';
+    private static $logged_cache_fields = 'code|names|location|type|status|url|owner|founds|notfounds|size|size2|oxsize|difficulty|terrain|rating|rating_votes|recommendations|req_passwd|descriptions|hints|images|attr_acodes|trackables_count|trackables|alt_wpts|last_found|last_modified|date_created|date_hidden|willattends|country|state|preview_image|trip_time|trip_distance|gc_code|hints2|protection_areas|short_descriptions|needs_maintenance|watchers|oc_team_annotation|date_published';
 
     # Consider https://github.com/opencaching/okapi/issues/382 before adding
     # any new field to $logged_log_entry_fields! Care must be taken that
